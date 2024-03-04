@@ -1,0 +1,37 @@
+server:
+  port: 8765
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+#      routes:
+#      - id: microservice-2
+#        uri: lb://microservice-two
+#        predicates:
+#          - Path=/api/microservice2/**
+#
+#      - id: microservice-1
+#        uri: lb://microservice-one
+#        predicates:
+#          - Path=/api/microservice1/**ed
+
+
+jwt:
+  secret: MiAVzqUXy5Tfr1kVIGpPMiAVzqUXy5Tfr1kVIGpP
+
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8090/eureka/
+  instance:
+    instance-id: ${spring.application.name}:${vcap.application.instance_id:${spring.application.instance_id:${random.value}}}
+
+
+
+
