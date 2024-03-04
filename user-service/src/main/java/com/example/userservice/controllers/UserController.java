@@ -7,10 +7,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping(value = "/users")
 public class UserController {
 
-    private UserService userService;
+    private  UserService userService;
+
+
 
     @PostMapping
     public ResponseEntity<UserVO> save(@RequestBody UserVO userVO){
