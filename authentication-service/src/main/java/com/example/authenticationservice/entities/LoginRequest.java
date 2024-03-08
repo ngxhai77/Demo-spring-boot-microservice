@@ -5,9 +5,9 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class MsAuthRequest {
+public class LoginRequest {
 
-    private String id;
-    private String role;
+    private String userName;
+    private String password;
 
 }
