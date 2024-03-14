@@ -14,7 +14,6 @@ public class HiController {
     @Autowired
     private Environment environment;
 
-
     @GetMapping("/hi")
     public String hi(){
         return "Hello world from microservice 1, port = "+ environment.getProperty("local.server.port");

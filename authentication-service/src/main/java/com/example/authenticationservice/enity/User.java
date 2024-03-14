@@ -7,11 +7,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 @AllArgsConstructor
-@NoArgsConstructor
+    @NoArgsConstructor
 @Builder
 @Data
 @Entity
@@ -19,6 +18,7 @@ import java.util.List;
 public class User implements UserDetails{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
     private Integer id;
 
     @Nullable
@@ -29,7 +29,7 @@ public class User implements UserDetails{
     @Nullable
     @Column(name = "password", length = 255)
     @NotBlank(message = "password isn't allow empty")
-    private String password;
+    private String  password;
 
     @Nullable
     @Column(name = "fullName", length = 30)
@@ -44,14 +44,18 @@ public class User implements UserDetails{
     @Column(name = "address", length = 80)
     private String address;
 
-    @Nullable
-    @Column(name = "role", length = 15)
-    private String role;
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+        @JoinTable(name = "user_role", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
+    private Set<Role> roles = new HashSet<>();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role));
-    }
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        for (Role role : roles) {
+            authorities.add(new SimpleGrantedAuthority(role.getRole()));
+        }
+        return authorities;
+        }
 
     @Override
     public String getUsername() {
@@ -62,7 +66,7 @@ public class User implements UserDetails{
         return password;
     }
 
-    public String getRole(){return role;}
+
 
     @Override
     public boolean isAccountNonExpired() {
@@ -83,4 +87,19 @@ public class User implements UserDetails{
     public boolean isEnabled() {
         return true;
     }
-}
+
+
+    public Set<Role> getRoles() {
+            return roles;
+    }
+    public void setRoles(Set<Role> roles) {
+            this.roles = roles;
+    }
+
+
+    public  void addRole(Role role) {
+            this.roles.add(role);
+        }
+
+    }
+

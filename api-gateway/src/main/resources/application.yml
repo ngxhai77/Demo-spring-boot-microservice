@@ -9,7 +9,7 @@ spring:
       discovery:
         locator:
           enabled: true
-      routes:
+#      routes:
 #      - id: microservice-2
 #        uri: lb://microservice-two
 #        predicates:
@@ -18,7 +18,15 @@ spring:
 #      - id: microservice-1
 #        uri: lb://microservice-one
 #        predicates:
-#          - Path=/api/microservice1/**ed
+#          - Path=/api/microservice1/**
+#      - id: auth-service
+#        uri: lb://auth-service
+#        predicates:
+#          - Path=/auth/**
+##      - id: user-service
+##        uri: lb://user-service
+##        predicates:
+##          - Path=/users/**
 
 
 jwt:

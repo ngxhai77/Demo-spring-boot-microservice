@@ -1,11 +1,13 @@
 package com.example.authenticationservice.config;
 
+import com.example.authenticationservice.enity.Role;
+import com.example.authenticationservice.enity.User;
 import com.example.authenticationservice.services.JwtUtil;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -13,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -26,39 +29,73 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     //Perform progress authentication user by the token
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException{
-        final String authHeader = request.getHeader("Authorization");
-        final String userName;
-        final String jwt;
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-        if(authHeader == null || !authHeader.startsWith("Bearer ")){
+        if (!hasAuthorizationBearer(request)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        //replace string "Bearer" in token
-        jwt = authHeader.substring(7);
+        String token = getAccessToken(request);
 
-        //get userName in token
-        userName = jwtUtil.extractUsername(jwt);
-        if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null){
-            //get information user by userName
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userName);
-
-            //check valid token
-            if(jwtUtil.isTokenValid(jwt, userDetails)){
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities()
-                );
-
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                //update information user in SecurityContextHolder
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        if (!jwtUtil.validateAccessToken(token)) {
+            filterChain.doFilter(request, response);
+            return;
         }
-        filterChain.doFilter(request,response);
+
+        setAuthenticationContext(token, request);
+        filterChain.doFilter(request, response);
+    }
+
+
+    private void setAuthenticationContext(String token, HttpServletRequest request) {
+        UserDetails userDetails = getUserDetails(token);
+
+        UsernamePasswordAuthenticationToken
+                authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+        authentication.setDetails(
+                new WebAuthenticationDetailsSource().buildDetails(request));
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+
+    private UserDetails getUserDetails(String token) {
+        User userDetails = new User();
+        Claims claims = jwtUtil.getClaims(token);
+        String subject = (String) claims.get(Claims.SUBJECT);
+        String roles = (String) claims.get("roles");
+
+        System.out.println("SUBJECT: " + subject);
+        System.out.println("roles: " + roles);
+        roles = roles.replace("[", "").replace("]", "");
+        String[] roleNames = roles.split(",");
+
+        for (String aRoleName : roleNames) {
+            userDetails.addRole(new Role(aRoleName));
+        }
+
+        String[] jwtSubject = subject.split(",");
+
+        userDetails.setId(Integer.parseInt(jwtSubject[0]));
+        userDetails.setUserName(jwtSubject[1]);
+
+        return userDetails;
+    }
+    private String getAccessToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        String token = header.split(" ")[1].trim();
+        return token;
+    }
+    private boolean hasAuthorizationBearer(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (ObjectUtils.isEmpty(header) || !header.startsWith("Bearer")) {
+            return false;
+        }
+
+        return true;
     }
 }

@@ -1,16 +1,20 @@
     package com.example.authenticationservice.services;
 
 
+    import com.example.authenticationservice.enity.Role;
     import com.example.authenticationservice.enity.User;
     import com.example.authenticationservice.entities.RegisterRequest;
     import com.example.authenticationservice.entities.AuthResponse;
     import com.example.authenticationservice.entities.LoginRequest;
     import com.example.authenticationservice.entities.UserVO;
+    import com.example.authenticationservice.repository.IRoleRepository;
     import com.example.authenticationservice.repository.IUserRepository;
     import com.example.authenticationservice.services.impl.IAuthService;
-    import io.jsonwebtoken.Claims;
+    import io.jsonwebtoken.*;
     import lombok.AllArgsConstructor;
     import org.mindrot.jbcrypt.BCrypt;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
     import org.springframework.beans.factory.annotation.Autowired;
     import org.springframework.http.HttpStatus;
     import org.springframework.http.HttpStatusCode;
@@ -27,6 +31,7 @@
     import org.springframework.web.client.RestTemplate;
 
     import java.util.List;
+    import java.util.Set;
 
     @Service
     @AllArgsConstructor
@@ -38,25 +43,15 @@
         private final AuthenticationManager authenticationManager;
         private IUserRepository userRepository ;
         private UserDetailsService userDetailService;
+        private IRoleRepository roleRepository;
 
 
-
-
-//        public ResponseEntity regssister(RegisterRequest request) {
-//            //do validation if user exists id DB
-//            request.setPassword(BCrypt.hashpw(request.getPassword(), BCrypt.gensalt()));
-//            UserVO registeredUser = restTemplate.postForObject("http://user-service/users", request, UserVO.class);
-//
-//            String accessToken = jwtUtil.generate(registeredUser.getId(), registeredUser.getRole(), "ACCESS");
-//            String refreshToken = jwtUtil.generate(registeredUser.getId(), registeredUser.getRole(), "REFRESH");
-//
-//            return new AuthResponse(accessToken, refreshToken);
-//        }
 
         @Override
         public ResponseEntity<Object> register(RegisterRequest request) {
             //check email exists in database
             var foundUser = userRepository.findByUserName(request.getUserName());
+            var foundRole = roleRepository.findByRole(request.getRole());
 
             //check user exists in table user
             if(!foundUser.isPresent())
@@ -67,8 +62,15 @@
                         .address(request.getAddress())
                         .phone(request.getPhone())
                         .password(new BCryptPasswordEncoder().encode(request.getPassword()))
-                        .role(request.getRole())
                         .build();
+
+                if (foundRole.isPresent()) {
+                    // Nếu vai trò đã được tìm thấy, thêm vào đối tượng User
+                    user.addRole(foundRole.get());
+                } else {
+                    // Nếu vai trò không tồn tại, bạn có thể xử lý nó tùy thuộc vào logic của bạn, ví dụ:
+                     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Role not found");
+                }
 
                 userRepository.save(user);
 
@@ -122,7 +124,7 @@
                 if (jwtUtil.isTokenValid(token, userDetails)){
                     //get role of user
                     Claims claims = jwtUtil.getClaims(token);
-                    List<String> roles =claims.get("role",List.class);
+                    List<String> roles = claims.get("role",List.class);
 
                     if (checkRole(roles, role)){
                         return ResponseEntity.status(HttpStatus.OK).body("ACCESS GRANTED");
@@ -141,6 +143,8 @@
             }
             return false;
         }
+
+
     }
 
 

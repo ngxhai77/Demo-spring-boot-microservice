@@ -1,17 +1,16 @@
 package com.example.authenticationservice.services;
 
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.lang.Objects;
+
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-
 import java.security.Key;
 import java.util.*;
 import java.util.function.Function;
@@ -26,34 +25,12 @@ public class JwtUtil {
     private String expiration;
 
     private Key key;
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtUtil.class);
     @PostConstruct
     public void postConstruct(){
         key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-
-
-
-
-    public String generate(String userId,String role, String tokenType){
-        Map<String, String> claims = Map.of("id", userId, "role", role);
-        long expMillis = "ACCESS".equalsIgnoreCase(tokenType)
-                ? Long.parseLong(expiration) * 1000
-                : Long.parseLong(expiration) * 1000 * 5;
-
-        final Date now = new Date();
-        final Date exp = new Date(now.getTime() * expMillis);
-
-        return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(claims.get("id"))
-                .setIssuedAt(now)
-                .setExpiration(exp)
-                .signWith(key)
-                .compact();
-
-    }
 
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
@@ -77,7 +54,6 @@ public class JwtUtil {
                 .compact();
 
     }
-
 
     //get information user login by token
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver){
@@ -103,11 +79,29 @@ public class JwtUtil {
         return getExpirationDate(token).before(new Date());
     }
 
-
     //check token
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isExpired(token);
+    }
+
+    public boolean validateAccessToken(String token) {
+        try {
+            Jwts.parser().setSigningKey(key).parseClaimsJws(token);
+            return true;
+        } catch (ExpiredJwtException ex) {
+            LOGGER.error("JWT expired", ex.getMessage());
+        } catch (IllegalArgumentException ex) {
+            LOGGER.error("Token is null, empty or only whitespace", ex.getMessage());
+        } catch (MalformedJwtException ex) {
+            LOGGER.error("JWT is invalid", ex);
+        } catch (UnsupportedJwtException ex) {
+            LOGGER.error("JWT is not supported", ex);
+        } catch (SignatureException ex) {
+            LOGGER.error("Signature validation failed");
+        }
+
+        return false;
     }
 
 }
